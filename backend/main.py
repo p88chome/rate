@@ -372,6 +372,12 @@ async def download_file(filename: str):
     else:
         raise HTTPException(status_code=404, detail="File not found")
 
+# EXPLICIT FALLBACK ROUTE for Render compatibility
+@app.get("/api/download/{filename}")
+async def download_file_api(filename: str):
+    print(f"EXPLICIT API DOWNLOAD REQUEST: {filename}")
+    return await download_file(filename)
+
 # Include Router Twice for Compatibility
 app.include_router(api_router)
 app.include_router(api_router, prefix="/api")
