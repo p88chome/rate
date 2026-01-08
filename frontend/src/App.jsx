@@ -21,8 +21,8 @@ import 'primeflex/primeflex.css';
 // Add custom styles for markdown content
 import './App.css';
 
-const API_BASE = 'https://rateagent.onrender.com';
-// const API_BASE = import.meta.env.VITE_API_URL || '/api';
+//const API_BASE = 'https://rateagent.onrender.com';
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 function App() {
   const [messages, setMessages] = useState([
@@ -335,7 +335,7 @@ function App() {
                 size="small"
                 className="white-space-nowrap bg-white/80 border-deloitte text-deloitte hover:bg-gray-100"
                 onClick={() => {
-                  const msg = "新青安與行員利率較低是合理的，請輸出利益關係人離群值明細給我";
+                  const msg = "那幫我輸出利益關係人的離群值明細給我";
                   setInput(msg);
                 }}
               />

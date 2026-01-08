@@ -3,17 +3,20 @@ import time
 import shutil
 import pandas as pd
 import numpy as np
-print(f"Pandas Version: {pd.__version__}")
-print(f"NumPy Version: {np.__version__}")
 import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 import base64
 import io
 import uuid
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+import requests
+from matplotlib import font_manager
+
+# Init Router
+api_router = APIRouter()
 from pydantic import BaseModel
 from typing import List, Optional, Any
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
@@ -30,7 +33,13 @@ from dotenv import load_dotenv
 # Non-interactive backend for plots
 matplotlib.use('Agg')
 
-load_dotenv()
+# Force load .env from the same directory as main.py
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+loaded = load_dotenv(env_path)
+print(f"Loading .env from: {env_path}")
+print(f"Env loaded: {loaded}")
+print(f"API Key present: {'Yes' if os.getenv('AZURE_OPENAI_API_KEY') else 'No'}")
+print(f"Endpoint: {os.getenv('AZURE_OPENAI_ENDPOINT')}")
 
 app = FastAPI()
 
@@ -53,7 +62,8 @@ class AppState:
     endpoint: str = os.getenv("AZURE_OPENAI_ENDPOINT", "")
     chat_deployment: str = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT", "")
     embedding_deployment: str = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "")
-    api_version: str = os.getenv("AZURE_OPENAI_API_VERSION", "2023-05-15")
+    api_version: str = os.getenv("AZURE_OPENAI_API_VERSION", "")
+    font_setup_code: str = "import matplotlib.pyplot as plt; plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']"
 
 state = AppState()
 
@@ -63,6 +73,41 @@ class ChatRequest(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     # 1. Try Local Absolute Path (Dev)
+    # Startup Config
+    print(f"Startup Config: KeyLen={len(state.api_key) if state.api_key else 0}, Endpoint={state.endpoint}, Deploy={state.chat_deployment}")
+
+    # 0. Check/Download Chinese Font (for Render/Linux)
+    font_path = "NotoSansTC-Regular.ttf"
+    if not os.path.exists(font_path):
+        print("Downloading Chinese font...")
+        try:
+            url = "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/TraditionalChinese/NotoSansCJKtc-Regular.otf" # Using OTF or TTF
+            # Simpler URL for a known TTF might be better, but let's try a standard one or fallback.
+            # Actually, let's use a reliable source for a smaller font file if possible.
+            # Let's use a direct link to a raw TTF/OTF.
+            url = "https://github.com/adobe-fonts/source-han-sans/raw/release/OTF/TraditionalChinese/SourceHanSansTC-Regular.otf"
+            r = requests.get(url, allow_redirects=True)
+            with open("SourceHanSansTC-Regular.otf", "wb") as f:
+                f.write(r.content)
+            font_path = "SourceHanSansTC-Regular.otf"
+            print("Font downloaded.")
+        except Exception as e:
+            print(f"Failed to download font: {e}")
+            font_path = None
+    
+    # Store font path in state or use a global usage strategy?
+    # Use forward slashes to avoid Windows escaping issues.
+    if font_path and os.path.exists(font_path):
+        abs_font_path = os.path.abspath(font_path).replace("\\", "/")
+        # Use fm.fontManager.addfont() to register the font, then refer to it as default.
+        state.font_setup_code = (
+            f"import matplotlib.font_manager as fm; "
+            f"fm.fontManager.addfont('{abs_font_path}'); "
+            f"plt.rcParams['font.family'] = fm.FontProperties(fname='{abs_font_path}').get_name()"
+        )
+    else:
+        state.font_setup_code = "import matplotlib.pyplot as plt; plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei', 'SimHei', 'Arial']"
+
     demo_path = r"d:/rate/Demo資料_利率合理性分析.xlsx"
     
     # 2. If not found, try Relative Path (Prod/Render)
@@ -71,6 +116,7 @@ async def startup_event():
 
     if os.path.exists(demo_path):
         print(f"Pre-loading demo file: {demo_path}")
+        print(f"Startup Config: KeyLen={len(state.api_key) if state.api_key else 0}, Endpoint={state.endpoint}, Deploy={state.chat_deployment}")
         try:
             # Load specific sheet "Demo資料"
             df = pd.read_excel(demo_path, sheet_name="Demo資料")
@@ -91,17 +137,17 @@ async def startup_event():
                 verbose=True, 
                 allow_dangerous_code=True,
                 agent_executor_kwargs={"handle_parsing_errors": True},
-                prefix=f"You are a detailed and professional AI Credit Analyst. The dataframe is loaded in `df`. \n\nCAPABILITIES:\n1. [METHOD EXPLANATION] If asked about 'How to perform reasonableness analysis?' (e.g., '請說明授信條件合理性分析'), DO NOT plot. Provide a structured text explanation with **Bold Headers** and *Bullet Points*. Sections: **利率**, **成數**, **寬限期**, **手續費**, **擔保品**, **還款方式**.\n2. [ANALYSIS & PLOTTING] If asked to 'Analyze rate' or for 'Reasonableness Analysis' on CURRENT data: 1. `import seaborn as sns; sns.set_theme(style='whitegrid')` 2. `import matplotlib.pyplot as plt; plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']` 3. `plt.rcParams['axes.unicode_minus'] = False` 4. `plt.figure(figsize=(12, 8))` 5. Plot distribution. 6. `plt.savefig('temp/plot.png')` (MUST EXECUTE). In Final Answer: Provide a detailed analysis summary. DO NOT mention the file path 'temp/plot.png'.\n3. [OUTLIER CHECK] If asked about 'outliers' (離群值): You MUST use the `python_repl_ast` tool. Business Rule: Rates < 2.6% are considered outliers. Logic: 1. Filter rows where '利率' < 2.6. 2. In these rows, count occurrences of '新青安' (New Green Housing), '行員' (Bank Employee), and '利益關係人' (Stakeholder) by checking columns like '產品名稱', '備註', or '身分別'. 3. Report the counts for each category to explain why these rates are low.\n4. [DATA EXPORT] If asked to export details (e.g., 'Provide stakeholder details'): Filter rows where '利率' < 2.6 AND the row contains '利益關係人' (check '產品名稱', '備註', '身分別'). Save to 'temp/export.xlsx', and print the first 5 rows using `print(df.head().to_markdown(index=False, numalign='left', stralign='left'))`. Return detailed summary/confirmation."
+                prefix=f"You are a detailed and professional AI Credit Analyst. The dataframe is ALREADY LOADED as `df`. DO NOT import pandas. DO NOT read files.\n\nCAPABILITIES:\n1. [METHOD EXPLANATION] If asked 'How to perform reasonableness analysis?', DO NOT plot. Provide structured text: **利率**, **成數**, **寬限期**, **手續費**, **擔保品**, **還款方式**.\n2. [ANALYSIS & PLOTTING] If asked to 'Analyze rate': \n   - YOU MUST EXECUTE THIS ENTIRE BLOCK IN ONE ACTION:\n     `import seaborn as sns; sns.set_theme(style='whitegrid'); import matplotlib.pyplot as plt; {state.font_setup_code}; plt.rcParams['axes.unicode_minus'] = False; plt.figure(figsize=(10,6)); sns.histplot(df['利率'], bins=30, kde=True); plt.title('利率分布圖'); plt.savefig('temp/plot.png'); print('Plot saved.')`\n   - Then summarize the distribution in the final answer.\n3. [OUTLIER CHECK] If asked about 'outliers' (離群值), USE `python_repl_ast` IMMEDIATELY with this logic:\n   - `df_out = df[df['利率'] < 2.6]`\n   - `n_green = df_out['新青安註記'].notna().sum()` (Standardize check: Count non-nulls)\n   - `n_emp = df_out['行員註記'].notna().sum()`\n   - `n_stake = df_out['利益關係人'].notna().sum()`\n   - `print(n_green, n_emp, n_stake)`\n   - **CRITICAL ANALYSIS**: '新青安' & '行員' are reasonable. BUT for **Stakeholder (利益關係人)**, citing **Bank Act 33**, flag as **Potential Compliance Risk**.\n4. [DATA EXPORT] If asked for 'Stakeholder details': \n   - Filter `df` where '利率' < 2.6 AND '利益關係人' IS NOT NULL (has value like 'V' or 'Y').\n   - Save to 'temp/export.xlsx'.\n   - Print first 5 rows with `print(df.head().to_markdown(index=False))`."
             )
             print("Demo data loaded successfully!")
         except Exception as e:
             print(f"Failed to load demo data: {e}")
 
-@app.get("/")
+@api_router.get("/")
 async def root():
     return {"status": "ok", "message": "Backend is running. Please check /docs for API documentation."}
 
-@app.get("/config-status")
+@api_router.get("/config-status")
 async def get_config_status():
     return {
         "configured": all([state.api_key, state.endpoint, state.chat_deployment, state.embedding_deployment]),
@@ -110,7 +156,7 @@ async def get_config_status():
         "demo_data_loaded": state.dataframe is not None
     }
 
-@app.post("/upload")
+@api_router.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     if not state.api_key:
         raise HTTPException(status_code=500, detail="Server not configured. Please check .env file.")
@@ -145,7 +191,7 @@ async def upload_file(file: UploadFile = File(...)):
                 verbose=True, 
                 allow_dangerous_code=True,
                 agent_executor_kwargs={"handle_parsing_errors": True},
-                prefix=f"You are a detailed and professional AI Credit Analyst. The dataframe is loaded in `df`. \n\nCAPABILITIES:\n1. [METHOD EXPLANATION] If asked about 'How to perform reasonableness analysis?' (e.g., '請說明授信條件合理性分析'), DO NOT plot. Provide a structured text explanation with **Bold Headers** and *Bullet Points*. Sections: **利率**, **成數**, **寬限期**, **手續費**, **擔保品**, **還款方式**.\n2. [ANALYSIS & PLOTTING] If asked to 'Analyze rate' or for 'Reasonableness Analysis' on CURRENT data: 1. `import seaborn as sns; sns.set_theme(style='whitegrid')` 2. `import matplotlib.pyplot as plt; plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']` 3. `plt.rcParams['axes.unicode_minus'] = False` 4. `plt.figure(figsize=(12, 8))` 5. Plot distribution. 6. `plt.savefig('temp/plot.png')` (MUST EXECUTE). In Final Answer: Provide a detailed analysis summary. DO NOT mention the file path 'temp/plot.png'.\n3. [OUTLIER CHECK] If asked about 'outliers' (離群值): You MUST use the `python_repl_ast` tool. Business Rule: Rates < 2.6% are considered outliers. Logic: 1. Filter rows where '利率' < 2.6. 2. In these rows, count occurrences of '新青安' (New Green Housing), '行員' (Bank Employee), and '利益關係人' (Stakeholder) by checking columns like '產品名稱', '備註', or '身分別'. 3. Report the counts for each category to explain why these rates are low.\n4. [DATA EXPORT] If asked to export details (e.g., 'Provide stakeholder details'): Filter rows where '利率' < 2.6 AND the row contains '利益關係人' (check '產品名稱', '備註', '身分別'). Save to 'temp/export.xlsx', and print the first 5 rows using `print(df.head().to_markdown(index=False, numalign='left', stralign='left'))`. Return detailed summary/confirmation."
+                prefix=f"You are a detailed and professional AI Credit Analyst. The dataframe is ALREADY LOADED as `df`. DO NOT import pandas. DO NOT read files.\n\nCAPABILITIES:\n1. [METHOD EXPLANATION] If asked 'How to perform reasonableness analysis?', DO NOT plot. Provide structured text: **利率**, **成數**, **寬限期**, **手續費**, **擔保品**, **還款方式**.\n2. [ANALYSIS & PLOTTING] If asked to 'Analyze rate': \n   - YOU MUST EXECUTE THIS ENTIRE BLOCK IN ONE ACTION:\n     `import seaborn as sns; sns.set_theme(style='whitegrid'); import matplotlib.pyplot as plt; {state.font_setup_code}; plt.rcParams['axes.unicode_minus'] = False; plt.figure(figsize=(10,6)); sns.histplot(df['利率'], bins=30, kde=True); plt.title('利率分布圖'); plt.savefig('temp/plot.png'); print('Plot saved.')`\n   - Then summarize the distribution in the final answer.\n3. [OUTLIER CHECK] If asked about 'outliers' (離群值), USE `python_repl_ast` IMMEDIATELY with this logic:\n   - `df_out = df[df['利率'] < 2.6]`\n   - `n_green = df_out['新青安註記'].notna().sum()` (Standardize check: Count non-nulls)\n   - `n_emp = df_out['行員註記'].notna().sum()`\n   - `n_stake = df_out['利益關係人'].notna().sum()`\n   - `print(n_green, n_emp, n_stake)`\n   - **CRITICAL ANALYSIS**: '新青安' & '行員' are reasonable. BUT for **Stakeholder (利益關係人)**, citing **Bank Act 33**, flag as **Potential Compliance Risk**.\n4. [DATA EXPORT] If asked for 'Stakeholder details': \n   - Filter `df` where '利率' < 2.6 AND '利益關係人' IS NOT NULL (has value like 'V' or 'Y').\n   - Save to 'temp/export.xlsx'.\n   - Print first 5 rows with `print(df.head().to_markdown(index=False))`."
             )
 
             # Also create RAG for semantic search (row by row)
@@ -169,6 +215,7 @@ async def upload_file(file: UploadFile = File(...)):
             text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
             texts = text_splitter.split_documents(documents)
             
+            print(f"Initializing Embeddings with: Deployment={state.embedding_deployment}, Endpoint={state.endpoint}, Key={'Yes' if state.api_key else 'No'}")
             embeddings = AzureOpenAIEmbeddings(
                 azure_deployment=state.embedding_deployment,
                 openai_api_version=state.api_version,
@@ -176,17 +223,21 @@ async def upload_file(file: UploadFile = File(...)):
                 api_key=state.api_key
             )
             state.vector_store = FAISS.from_documents(texts, embeddings)
+            print("Startup Complete: Agent and Vector Store initialized.")
 
         return {"message": "File processed successfully. You can now Ask about Policy (RAG) or Data (Analysis)."}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/chat")
+@api_router.post("/chat")
 async def chat(request: ChatRequest):
     if not state.vector_store and not state.agent:
         raise HTTPException(status_code=400, detail="No document processed yet")
     
+    print(f"Chat Request: Agent={bool(state.agent)}, RAG={bool(state.vector_store)}")
+    print(f"Runtime Config: KeyLen={len(state.api_key) if state.api_key else 0}, Model={state.chat_deployment}")
+
     try:
         response_data = {"response": ""}
 
@@ -199,9 +250,11 @@ async def chat(request: ChatRequest):
             keywords = ["analyze", "plot", "chart", "graph", "calculate", "count", "average", "sum", "export", "file", "excel", "outlier", "distribution", "合理性", "分析", "統計", "趨勢", "明細", "detail", "list", "output", "輸出"]
             if any(k in request.message.lower() for k in keywords):
                 use_agent = True
+        
+        print(f"Decision: Use Agent? {use_agent}")
 
         if use_agent:
-            # Run Agent
+            print("Invoking Agent...")
             # Ensure temp dir exists
             os.makedirs("temp", exist_ok=True)
             
@@ -211,31 +264,36 @@ async def chat(request: ChatRequest):
                     os.remove("temp/plot.png")
                 except OSError:
                     pass
-                
-            res = state.agent.invoke(request.message)
-            agent_output = res['output']
-            
-            # Check for plot
-            if os.path.exists("temp/plot.png"):
-                print("Found plot.png, attaching to response...")
-                with open("temp/plot.png", "rb") as f:
-                    img_base64 = base64.b64encode(f.read()).decode('utf-8')
-                response_data["image"] = img_base64
-                agent_output += "\n\n(Chart generated)"
-            else:
-                print("No plot.png found after agent execution.")
-            
-            # Check for export
-            # Only trigger if export.xlsx exists and was modified recently (after request started)
-            if os.path.exists("temp/export.xlsx"):
-                 file_mtime = os.path.getmtime("temp/export.xlsx")
-                 current_time = time.time()
-                 # If modified within the last 30 seconds (generous buffer)
-                 if current_time - file_mtime < 30:
-                     response_data["file"] = "/api/download/export.xlsx"
-                     agent_output += "\n\n(File ready for download)"
 
-            response_data["response"] = agent_output
+            try:
+                res = state.agent.invoke(request.message)
+                print("Agent invoke success")
+                agent_output = res['output']
+                
+                # Check for plot
+                if os.path.exists("temp/plot.png"):
+                    print("Found plot.png, attaching to response...")
+                    with open("temp/plot.png", "rb") as f:
+                        img_base64 = base64.b64encode(f.read()).decode('utf-8')
+                    response_data["image"] = img_base64
+                    agent_output += "\n\n(Chart generated)"
+                
+                # Check for export
+                if os.path.exists("temp/export.xlsx"):
+                     file_mtime = os.path.getmtime("temp/export.xlsx")
+                     current_time = time.time()
+                     # If modified within the last 30 seconds (generous buffer)
+                     if current_time - file_mtime < 30:
+                         response_data["file"] = "/api/download/export.xlsx"
+                         agent_output += "\n\n(File ready for download)"
+
+                response_data["response"] = agent_output
+            except Exception as inner_e:
+                print(f"AGENT ERROR: {inner_e}")
+                import traceback
+                traceback.print_exc()
+                # Return the error to the user so they (and we) can see it in valid JSON
+                response_data["response"] = f"Agent Execution Error: {str(inner_e)}"
 
         else:
             # Run RAG with LCEL
@@ -294,12 +352,21 @@ Instructions:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/download/{filename}")
+@api_router.get("/download/{filename}")
 async def download_file(filename: str):
+    # Security check
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+        
     file_path = os.path.join("temp", filename)
     if os.path.exists(file_path):
         return FileResponse(file_path, filename=filename)
-    raise HTTPException(status_code=404, detail="File not found")
+    else:
+        raise HTTPException(status_code=404, detail="File not found")
+
+# Include Router Twice for Compatibility
+app.include_router(api_router)
+app.include_router(api_router, prefix="/api")
 
 # SERVE STATIC FILES (Frontend Build)
 # We expect the frontend build to be in 'static' directory
