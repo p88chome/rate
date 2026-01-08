@@ -247,7 +247,7 @@ function App() {
                               )}
 
                               {msg.file && (
-                                <a href={msg.file} target="_blank" rel="noopener noreferrer" className="no-underline">
+                                <a href={msg.file.startsWith('http') ? msg.file : `${API_BASE}${msg.file}`} target="_blank" rel="noopener noreferrer" className="no-underline">
                                   <Button
                                     label="下載分析報表 (Excel)"
                                     icon="pi pi-download"
