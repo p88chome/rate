@@ -61,8 +61,13 @@ class ChatRequest(BaseModel):
 
 @app.on_event("startup")
 async def startup_event():
-    # Hardcoded path for Demo
+    # 1. Try Local Absolute Path (Dev)
     demo_path = r"d:/rate/Demo資料_利率合理性分析.xlsx"
+    
+    # 2. If not found, try Relative Path (Prod/Render)
+    if not os.path.exists(demo_path):
+        demo_path = "demo_data.xlsx"
+
     if os.path.exists(demo_path):
         print(f"Pre-loading demo file: {demo_path}")
         try:
@@ -78,13 +83,13 @@ async def startup_event():
                 api_key=state.api_key,
                 temperature=0
             )
+            
             state.agent = create_pandas_dataframe_agent(
                 llm, 
                 df, 
                 verbose=True, 
                 allow_dangerous_code=True,
-                # Update prefix to ask for table preview and prettier plots + CHINESE FONT FIX + LARGER SIZE
-                prefix="You are a data analyst. The dataframe is ALREADY loaded in the variable `df`. DO NOT try to read any excel file. Use `df` directly for analysis. If asked to plot, use `seaborn` with `sns.set_theme(style='whitegrid')` and a professional color palette. IMPORTANT: You MUST set `plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']` and `plt.rcParams['axes.unicode_minus'] = False` BEFORE plotting. Use `plt.figure(figsize=(12, 8))` to make the plot large and clear. save the plot to 'temp/plot.png'. If asked to export data, save to 'temp/export.xlsx'. If you export data, please also print the first 5 rows as a markdown table in your final answer. Return the filename in your final answer."
+                prefix=f"You are a data analyst. The dataframe is ALREADY loaded in the variable `df`. DO NOT try to read any excel file. Use `df` directly for analysis. If asked to plot, use `seaborn` with `sns.set_theme(style='whitegrid')` and a professional color palette. IMPORTANT: Check `import platform`; if `platform.system() == 'Windows'`, set `plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']`. If Linux, try `plt.rcParams['font.sans-serif'] = ['WenQuanYi Micro Hei']` or avoid Chinese characters if not sure. Use `plt.figure(figsize=(12, 8))` to make the plot large and clear. save the plot to 'temp/plot.png'. If asked to export data, save to 'temp/export.xlsx'. If you export data, please also print the first 5 rows as a markdown table in your final answer. Return the filename in your final answer."
             )
             print("Demo data loaded successfully!")
         except Exception as e:
@@ -133,7 +138,7 @@ async def upload_file(file: UploadFile = File(...)):
                 df, 
                 verbose=True, 
                 allow_dangerous_code=True,
-                prefix="You are a data analyst. The dataframe is ALREADY loaded in the variable `df`. DO NOT try to read any excel file. Use `df` directly for analysis. If asked to plot, use `seaborn` with `sns.set_theme(style='whitegrid')` and a professional color palette. IMPORTANT: You MUST set `plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']` and `plt.rcParams['axes.unicode_minus'] = False` BEFORE plotting. Use `plt.figure(figsize=(12, 8))` to make the plot large and clear. save the plot to 'temp/plot.png'. If asked to export data, save to 'temp/export.xlsx'. If you export data, please also print the first 5 rows as a markdown table in your final answer. Return the filename in your final answer."
+                prefix=f"You are a data analyst. The dataframe is ALREADY loaded in the variable `df`. DO NOT try to read any excel file. Use `df` directly for analysis. If asked to plot, use `seaborn` with `sns.set_theme(style='whitegrid')` and a professional color palette. IMPORTANT: Check `import platform`; if `platform.system() == 'Windows'`, set `plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']`. If Linux, try `plt.rcParams['font.sans-serif'] = ['WenQuanYi Micro Hei']` or avoid Chinese characters if not sure. Use `plt.figure(figsize=(12, 8))` to make the plot large and clear. save the plot to 'temp/plot.png'. If asked to export data, save to 'temp/export.xlsx'. If you export data, please also print the first 5 rows as a markdown table in your final answer. Return the filename in your final answer."
             )
 
             # Also create RAG for semantic search (row by row)
@@ -273,6 +278,13 @@ async def download_file(filename: str):
         return FileResponse(file_path, filename=filename)
     raise HTTPException(status_code=404, detail="File not found")
 
+# SERVE STATIC FILES (Frontend Build)
+# We expect the frontend build to be in 'static' directory
+if os.path.exists("static"):
+    app.mount("/", StaticFiles(directory="static", html=True), name="static")
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Use PORT env variable for Render
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
