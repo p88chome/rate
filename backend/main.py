@@ -77,36 +77,33 @@ async def startup_event():
     print(f"Startup Config: KeyLen={len(state.api_key) if state.api_key else 0}, Endpoint={state.endpoint}, Deploy={state.chat_deployment}")
 
     # 0. Check/Download Chinese Font (for Render/Linux)
-    font_path = "NotoSansTC-Regular.ttf"
-    if not os.path.exists(font_path):
-        print("Downloading Chinese font...")
+    # 0. Check/Download Chinese Font (for Render/Linux)
+    # Using jf-openhuninn-1.1.ttf (TrueType) for better compatibility on Linux/Render than OTF
+    font_filename = "jf-openhuninn-1.1.ttf"
+    if not os.path.exists(font_filename):
+        print("Downloading Chinese font (jf-openhuninn)...")
         try:
-            url = "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/TraditionalChinese/NotoSansCJKtc-Regular.otf" # Using OTF or TTF
-            # Simpler URL for a known TTF might be better, but let's try a standard one or fallback.
-            # Actually, let's use a reliable source for a smaller font file if possible.
-            # Let's use a direct link to a raw TTF/OTF.
-            url = "https://github.com/adobe-fonts/source-han-sans/raw/release/OTF/TraditionalChinese/SourceHanSansTC-Regular.otf"
+            url = "https://github.com/justfont/open-huninn-font/blob/master/font/jf-openhuninn-1.1.ttf?raw=true"
             r = requests.get(url, allow_redirects=True)
-            with open("SourceHanSansTC-Regular.otf", "wb") as f:
+            with open(font_filename, "wb") as f:
                 f.write(r.content)
-            font_path = "SourceHanSansTC-Regular.otf"
             print("Font downloaded.")
         except Exception as e:
             print(f"Failed to download font: {e}")
-            font_path = None
+            font_filename = None
     
-    # Store font path in state or use a global usage strategy?
-    # Use forward slashes to avoid Windows escaping issues.
-    if font_path and os.path.exists(font_path):
-        abs_font_path = os.path.abspath(font_path).replace("\\", "/")
-        # Use fm.fontManager.addfont() to register the font, then refer to it as default.
+    # Store font path in state
+    if font_filename and os.path.exists(font_filename):
+        abs_font_path = os.path.abspath(font_filename).replace("\\", "/")
         state.font_setup_code = (
             f"import matplotlib.font_manager as fm; "
             f"fm.fontManager.addfont('{abs_font_path}'); "
-            f"plt.rcParams['font.family'] = fm.FontProperties(fname='{abs_font_path}').get_name()"
+            f"font_name = fm.FontProperties(fname='{abs_font_path}').get_name(); "
+            f"plt.rcParams['font.sans-serif'] = [font_name, 'Microsoft JhengHei', 'sans-serif']; "
+            f"plt.rcParams['axes.unicode_minus'] = False"
         )
     else:
-        state.font_setup_code = "import matplotlib.pyplot as plt; plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei', 'SimHei', 'Arial']"
+        state.font_setup_code = "import matplotlib.pyplot as plt; plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei', 'SimHei', 'Arial']; plt.rcParams['axes.unicode_minus'] = False"
 
     demo_path = r"d:/rate/Demo資料_利率合理性分析.xlsx"
     
