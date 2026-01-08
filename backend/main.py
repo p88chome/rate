@@ -97,6 +97,10 @@ async def startup_event():
         except Exception as e:
             print(f"Failed to load demo data: {e}")
 
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "Backend is running. Please check /docs for API documentation."}
+
 @app.get("/config-status")
 async def get_config_status():
     return {
