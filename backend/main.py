@@ -1,4 +1,5 @@
 import os
+import time
 import shutil
 import pandas as pd
 import numpy as np
@@ -90,7 +91,7 @@ async def startup_event():
                 verbose=True, 
                 allow_dangerous_code=True,
                 agent_executor_kwargs={"handle_parsing_errors": True},
-                prefix=f"You are a detailed and professional AI Credit Analyst. The dataframe is loaded in `df`. \n\nRULES:\n1. [Q1: EXPLAIN] If asked 'How to perform reasonableness analysis?' (請說明授信條件合理性分析...), DO NOT plot. Instead, provide a structured text explanation using **Bold Headers** and *Bullet Points* for readability. Sections: **利率**, **成數**, **寬限期**, **手續費**, **擔保品**, **還款方式**.\n2. [Q2: PLOT] If asked to 'Analyze rate' or plot: 1. `import seaborn as sns; sns.set_theme(style='whitegrid')` 2. `import matplotlib.pyplot as plt; plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']` 3. `plt.rcParams['axes.unicode_minus'] = False` 4. `plt.figure(figsize=(12, 8))` 5. Plot distribution. 6. `plt.savefig('temp/plot.png')` (MUST EXECUTE). In Final Answer: Provide a detailed analysis summary. DO NOT mention the file path 'temp/plot.png'.\n3. [Q3: OUTLIERS] If asked about 'outliers' (離群值): You MUST use the `python_repl_ast` tool to calculate counts and average rates for 1. '新青安' (New Green Housing) 2. '行員' (Bank Employee) 3. '利益關係人' (Stakeholder). Action format: `python_repl_ast` then code. DO NOT invent new tools.\n4. [Q4: EXPORT] If asked to export details: Filter rows, save to 'temp/export.xlsx', and print the first 5 rows using `print(df.head().to_markdown(index=False, numalign='left', stralign='left'))`. Return detailed summary."
+                prefix=f"You are a detailed and professional AI Credit Analyst. The dataframe is loaded in `df`. \n\nCAPABILITIES:\n1. [METHOD EXPLANATION] If asked about 'How to perform reasonableness analysis?' (e.g., '請說明授信條件合理性分析'), DO NOT plot. Provide a structured text explanation with **Bold Headers** and *Bullet Points*. Sections: **利率**, **成數**, **寬限期**, **手續費**, **擔保品**, **還款方式**.\n2. [ANALYSIS & PLOTTING] If asked to 'Analyze rate' or for 'Reasonableness Analysis' on CURRENT data: 1. `import seaborn as sns; sns.set_theme(style='whitegrid')` 2. `import matplotlib.pyplot as plt; plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']` 3. `plt.rcParams['axes.unicode_minus'] = False` 4. `plt.figure(figsize=(12, 8))` 5. Plot distribution. 6. `plt.savefig('temp/plot.png')` (MUST EXECUTE). In Final Answer: Provide a detailed analysis summary. DO NOT mention the file path 'temp/plot.png'.\n3. [OUTLIER CHECK] If asked about 'outliers' (離群值): You MUST use the `python_repl_ast` tool to calculate counts and average rates for 1. '新青安' (New Green Housing) 2. '行員' (Bank Employee) 3. '利益關係人' (Stakeholder). Action format: `python_repl_ast` then code. DO NOT invent new tools.\n4. [DATA EXPORT] If asked to export details (e.g., 'Provide stakeholder details'): Filter rows, save to 'temp/export.xlsx', and print the first 5 rows using `print(df.head().to_markdown(index=False, numalign='left', stralign='left'))`. Return detailed summary/confirmation."
             )
             print("Demo data loaded successfully!")
         except Exception as e:
@@ -140,7 +141,7 @@ async def upload_file(file: UploadFile = File(...)):
                 verbose=True, 
                 allow_dangerous_code=True,
                 agent_executor_kwargs={"handle_parsing_errors": True},
-                prefix=f"You are a detailed and professional AI Credit Analyst. The dataframe is loaded in `df`. \n\nRULES:\n1. [Q1: EXPLAIN] If asked 'How to perform reasonableness analysis?' (請說明授信條件合理性分析...), DO NOT plot. Instead, provide a structured text explanation using **Bold Headers** and *Bullet Points* for readability. Sections: **利率**, **成數**, **寬限期**, **手續費**, **擔保品**, **還款方式**.\n2. [Q2: PLOT] If asked to 'Analyze rate' or plot: 1. `import seaborn as sns; sns.set_theme(style='whitegrid')` 2. `import matplotlib.pyplot as plt; plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']` 3. `plt.rcParams['axes.unicode_minus'] = False` 4. `plt.figure(figsize=(12, 8))` 5. Plot distribution. 6. `plt.savefig('temp/plot.png')` (MUST EXECUTE). In Final Answer: Provide a detailed analysis summary. DO NOT mention the file path 'temp/plot.png'.\n3. [Q3: OUTLIERS] If asked about 'outliers' (離群值): You MUST use the `python_repl_ast` tool to calculate counts and average rates for 1. '新青安' (New Green Housing) 2. '行員' (Bank Employee) 3. '利益關係人' (Stakeholder). Action format: `python_repl_ast` then code. DO NOT invent new tools.\n4. [Q4: EXPORT] If asked to export details: Filter rows, save to 'temp/export.xlsx', and print the first 5 rows using `print(df.head().to_markdown(index=False, numalign='left', stralign='left'))`. Return detailed summary."
+                prefix=f"You are a detailed and professional AI Credit Analyst. The dataframe is loaded in `df`. \n\nCAPABILITIES:\n1. [METHOD EXPLANATION] If asked about 'How to perform reasonableness analysis?' (e.g., '請說明授信條件合理性分析'), DO NOT plot. Provide a structured text explanation with **Bold Headers** and *Bullet Points*. Sections: **利率**, **成數**, **寬限期**, **手續費**, **擔保品**, **還款方式**.\n2. [ANALYSIS & PLOTTING] If asked to 'Analyze rate' or for 'Reasonableness Analysis' on CURRENT data: 1. `import seaborn as sns; sns.set_theme(style='whitegrid')` 2. `import matplotlib.pyplot as plt; plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']` 3. `plt.rcParams['axes.unicode_minus'] = False` 4. `plt.figure(figsize=(12, 8))` 5. Plot distribution. 6. `plt.savefig('temp/plot.png')` (MUST EXECUTE). In Final Answer: Provide a detailed analysis summary. DO NOT mention the file path 'temp/plot.png'.\n3. [OUTLIER CHECK] If asked about 'outliers' (離群值): You MUST use the `python_repl_ast` tool to calculate counts and average rates for 1. '新青安' (New Green Housing) 2. '行員' (Bank Employee) 3. '利益關係人' (Stakeholder). Action format: `python_repl_ast` then code. DO NOT invent new tools.\n4. [DATA EXPORT] If asked to export details (e.g., 'Provide stakeholder details'): Filter rows, save to 'temp/export.xlsx', and print the first 5 rows using `print(df.head().to_markdown(index=False, numalign='left', stralign='left'))`. Return detailed summary/confirmation."
             )
 
             # Also create RAG for semantic search (row by row)
@@ -221,14 +222,12 @@ async def chat(request: ChatRequest):
                 print("No plot.png found after agent execution.")
             
             # Check for export
-            # We look if the agent said it saved a file or we check if a new .xlsx exists
-            # For simplicity, let's assume if 'export.xlsx' is fresh? 
-            # Or simplified: if user asked for export, check for 'temp/export.xlsx'
-            # Check for export
-            # We look if the agent said it saved a file or we check if a new .xlsx exists
-            export_keywords = ["export", "excel", "輸出", "明細", "下載"]
-            if any(k in request.message.lower() for k in export_keywords):
-                 if os.path.exists("temp/export.xlsx"):
+            # Only trigger if export.xlsx exists and was modified recently (after request started)
+            if os.path.exists("temp/export.xlsx"):
+                 file_mtime = os.path.getmtime("temp/export.xlsx")
+                 current_time = time.time()
+                 # If modified within the last 30 seconds (generous buffer)
+                 if current_time - file_mtime < 30:
                      response_data["file"] = "/api/download/export.xlsx"
                      agent_output += "\n\n(File ready for download)"
 
