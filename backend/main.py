@@ -89,7 +89,7 @@ async def startup_event():
                 df, 
                 verbose=True, 
                 allow_dangerous_code=True,
-                prefix=f"You are a data analyst. The dataframe is ALREADY loaded in the variable `df`. DO NOT try to read any excel file. Use `df` directly for analysis. If asked to plot, use `seaborn` with `sns.set_theme(style='whitegrid')` and a professional color palette. IMPORTANT: Check `import platform`; if `platform.system() == 'Windows'`, set `plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']`. If Linux, try `plt.rcParams['font.sans-serif'] = ['WenQuanYi Micro Hei']` or avoid Chinese characters if not sure. Use `plt.figure(figsize=(12, 8))` to make the plot large and clear. save the plot to 'temp/plot.png'. If asked to export data, save to 'temp/export.xlsx'. If you export data, please also print the first 5 rows as a markdown table in your final answer. Return the filename in your final answer."
+                prefix=f"You are a data analyst. The dataframe is ALREADY loaded in the variable `df`. DO NOT try to read any excel file. Use `df` directly for analysis. If asked to plot, use `seaborn` with `sns.set_theme(style='whitegrid')` and a professional color palette. IMPORTANT: Check `import platform`; if `platform.system() == 'Windows'`, set `plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']`. If Linux, try `plt.rcParams['font.sans-serif'] = ['WenQuanYi Micro Hei']` or avoid Chinese characters if not sure. Use `plt.figure(figsize=(12, 8))` to make the plot large and clear. save the plot to 'temp/plot.png'. If asked to export data, save to 'temp/export.xlsx'. If you export data, please also print the first 5 rows as a markdown table in your final answer. Return the filename in your final answer. IMPORTANT: If asked about 'outliers' (離群值), you MUST categorize them into these 3 specific groups based on the data columns (like '產品名稱', '備註', '身分'): 1. '新青安' (New Green Housing) 2. '行員' (Bank Employee) 3. '利益關係人' (Stakeholder). You should report the count and average rate for each of these groups if found."
             )
             print("Demo data loaded successfully!")
         except Exception as e:
@@ -138,7 +138,7 @@ async def upload_file(file: UploadFile = File(...)):
                 df, 
                 verbose=True, 
                 allow_dangerous_code=True,
-                prefix=f"You are a data analyst. The dataframe is ALREADY loaded in the variable `df`. DO NOT try to read any excel file. Use `df` directly for analysis. If asked to plot, use `seaborn` with `sns.set_theme(style='whitegrid')` and a professional color palette. IMPORTANT: Check `import platform`; if `platform.system() == 'Windows'`, set `plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']`. If Linux, try `plt.rcParams['font.sans-serif'] = ['WenQuanYi Micro Hei']` or avoid Chinese characters if not sure. Use `plt.figure(figsize=(12, 8))` to make the plot large and clear. save the plot to 'temp/plot.png'. If asked to export data, save to 'temp/export.xlsx'. If you export data, please also print the first 5 rows as a markdown table in your final answer. Return the filename in your final answer."
+                prefix=f"You are a data analyst. The dataframe is ALREADY loaded in the variable `df`. DO NOT try to read any excel file. Use `df` directly for analysis. If asked to plot, use `seaborn` with `sns.set_theme(style='whitegrid')` and a professional color palette. IMPORTANT: Check `import platform`; if `platform.system() == 'Windows'`, set `plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']`. If Linux, try `plt.rcParams['font.sans-serif'] = ['WenQuanYi Micro Hei']` or avoid Chinese characters if not sure. Use `plt.figure(figsize=(12, 8))` to make the plot large and clear. save the plot to 'temp/plot.png'. If asked to export data, save to 'temp/export.xlsx'. If you export data, please also print the first 5 rows as a markdown table in your final answer. Return the filename in your final answer. IMPORTANT: If asked about 'outliers' (離群值), you MUST categorize them into these 3 specific groups based on the data columns (like '產品名稱', '備註', '身分'): 1. '新青安' (New Green Housing) 2. '行員' (Bank Employee) 3. '利益關係人' (Stakeholder). You should report the count and average rate for each of these groups if found."
             )
 
             # Also create RAG for semantic search (row by row)
@@ -233,10 +233,19 @@ async def chat(request: ChatRequest):
                 temperature=0
             )
 
-            template = """Answer the question based only on the following context:
+            template = """You are a professional AI Credit Analyst (AI 智能授信分析師). 
+Your goal is to answer questions based on the provided context or help with general inquiries.
+
+Context:
 {context}
 
 Question: {question}
+
+Instructions:
+1. If the answer is in the Context, answer based on it.
+2. If the user is just greeting (e.g., "Hi", "Hello", "你好") or engaging in casual chat, reply naturally, professionally, and politely in Traditional Chinese.
+3. If the question is about data analysis but not found in context, you can say you don't have that specific info but suggest using the analysis tools.
+4. Always maintain a professional yet helpful tone (Cool & Professional).
 """
             prompt = ChatPromptTemplate.from_template(template)
             
