@@ -277,12 +277,18 @@ async def chat(request: ChatRequest):
                 
                 # Check for export
                 if os.path.exists("temp/export.xlsx"):
+                     print("DEBUG: found temp/export.xlsx immediately after agent run")
                      file_mtime = os.path.getmtime("temp/export.xlsx")
                      current_time = time.time()
                      # If modified within the last 30 seconds (generous buffer)
                      if current_time - file_mtime < 30:
+                         print("DEBUG: file is fresh, attaching download link")
                          response_data["file"] = "/api/download/export.xlsx"
                          agent_output += "\n\n(File ready for download)"
+                     else:
+                         print(f"DEBUG: file is stale (age={current_time - file_mtime}s)")
+                else:
+                     print("DEBUG: temp/export.xlsx NOT FOUND after agent run")
 
                 response_data["response"] = agent_output
             except Exception as inner_e:
@@ -351,12 +357,17 @@ Instructions:
 
 @api_router.get("/download/{filename}")
 async def download_file(filename: str):
+    print(f"DOWNLOAD REQUEST: filename={filename}")
     # Security check
     if ".." in filename or "/" in filename or "\\" in filename:
+        print(f"DOWNLOAD ERROR: Invalid filename {filename}")
         raise HTTPException(status_code=400, detail="Invalid filename")
         
     file_path = os.path.join("temp", filename)
-    if os.path.exists(file_path):
+    exists = os.path.exists(file_path)
+    print(f"DOWNLOAD CHECK: path={file_path}, exists={exists}")
+    
+    if exists:
         return FileResponse(file_path, filename=filename)
     else:
         raise HTTPException(status_code=404, detail="File not found")
