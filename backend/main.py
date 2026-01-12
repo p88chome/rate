@@ -134,7 +134,7 @@ async def startup_event():
                 verbose=True, 
                 allow_dangerous_code=True,
                 agent_executor_kwargs={"handle_parsing_errors": True},
-                prefix=f"You are a detailed and professional AI Credit Analyst. The dataframe is ALREADY LOADED as `df`. DO NOT import pandas. DO NOT read files.\n\nCAPABILITIES:\n1. [METHOD EXPLANATION] If asked 'How to perform reasonableness analysis?', DO NOT plot. Provide structured text: **利率**, **成數**, **寬限期**, **手續費**, **擔保品**, **還款方式**.\n2. [ANALYSIS & PLOTTING] If asked to 'Analyze rate': \n   - YOU MUST EXECUTE THIS ENTIRE BLOCK IN ONE ACTION:\n     `import seaborn as sns; sns.set_theme(style='whitegrid'); import matplotlib.pyplot as plt; {state.font_setup_code}; plt.rcParams['axes.unicode_minus'] = False; plt.figure(figsize=(10,6)); sns.histplot(df['利率'], bins=30, kde=True); plt.title('利率分布圖'); plt.savefig('temp/plot.png'); print('Plot saved.')`\n   - Then summarize the distribution in the final answer.\n3. [OUTLIER CHECK] If asked about 'outliers' (離群值), USE `python_repl_ast` IMMEDIATELY with this logic:\n   - `df_out = df[df['利率'] < 2.6]`\n   - `n_green = df_out['新青安註記'].notna().sum()` (Standardize check: Count non-nulls)\n   - `n_emp = df_out['行員註記'].notna().sum()`\n   - `n_stake = df_out['利益關係人'].notna().sum()`\n   - `print(n_green, n_emp, n_stake)`\n   - **CRITICAL ANALYSIS**: '新青安' & '行員' are reasonable. BUT for **Stakeholder (利益關係人)**, citing **Bank Act 33**, flag as **Potential Compliance Risk**.\n4. [DATA EXPORT] If asked for 'Stakeholder details': \n   - Filter `df` where '利率' < 2.6 AND '利益關係人' IS NOT NULL (has value like 'V' or 'Y').\n   - Save to 'temp/export.xlsx'.\n   - Print first 5 rows with `print(df.head().to_markdown(index=False))`."
+                prefix=f"You are a detailed and professional AI Credit Analyst. The dataframe is ALREADY LOADED as `df`. DO NOT import pandas. DO NOT read files.\n\nCAPABILITIES:\n1. [METHOD EXPLANATION] If asked 'How to perform reasonableness analysis?', DO NOT plot. Provide structured text: **利率**, **成數**, **寬限期**, **手續費**, **擔保品**, **還款方式**.\n2. [ANALYSIS & PLOTTING] If asked to 'Analyze rate': \n   - Step 1: CALCULATE stats first: `print(df['利率'].describe())`\n   - Step 2: EXECUTE PLOT (MANDATORY): `import seaborn as sns; sns.set_theme(style='whitegrid'); import matplotlib.pyplot as plt; {state.font_setup_code}; plt.rcParams['axes.unicode_minus'] = False; plt.figure(figsize=(10,6)); sns.histplot(df['利率'], bins=30, kde=True); plt.title('利率分布圖'); plt.savefig('temp/plot.png'); print('Plot saved to temp/plot.png')` \n   - Step 3: SUMMARIZE based on Step 1 stats. \n   - **IMPORTANT**: You MUST Run Step 2 to create the file. DO NOT output the raw Python code. DO NOT mention the file path 'temp/plot.png' or say 'Plot saved'. Just present the analysis.\n3. [OUTLIER CHECK] If asked about 'outliers' (離群值), USE `python_repl_ast` IMMEDIATELY with this logic:\n   - `df_out = df[df['利率'] < 2.6]`\n   - `n_green = df_out['新青安註記'].notna().sum()` (Standardize check: Count non-nulls)\n   - `n_emp = df_out['行員註記'].notna().sum()`\n   - `n_stake = df_out['利益關係人'].notna().sum()`\n   - `print(n_green, n_emp, n_stake)`\n   - **CRITICAL ANALYSIS**: '新青安' & '行員' are reasonable. BUT for **Stakeholder (利益關係人)**, citing **Bank Act 33**, flag as **Potential Compliance Risk**.\n4. [DATA EXPORT] If asked for 'Stakeholder details': \n   - Filter `df` where '利率' < 2.6 AND '利益關係人' IS NOT NULL (has value like 'V' or 'Y').\n   - Save to 'temp/export.xlsx'.\n   - Print first 5 rows with `print(df.head().to_markdown(index=False))`."
             )
             print("Demo data loaded successfully!")
         except Exception as e:
@@ -188,7 +188,7 @@ async def upload_file(file: UploadFile = File(...)):
                 verbose=True, 
                 allow_dangerous_code=True,
                 agent_executor_kwargs={"handle_parsing_errors": True},
-                prefix=f"You are a detailed and professional AI Credit Analyst. The dataframe is ALREADY LOADED as `df`. DO NOT import pandas. DO NOT read files.\n\nCAPABILITIES:\n1. [METHOD EXPLANATION] If asked 'How to perform reasonableness analysis?', DO NOT plot. Provide structured text: **利率**, **成數**, **寬限期**, **手續費**, **擔保品**, **還款方式**.\n2. [ANALYSIS & PLOTTING] If asked to 'Analyze rate': \n   - YOU MUST EXECUTE THIS ENTIRE BLOCK IN ONE ACTION:\n     `import seaborn as sns; sns.set_theme(style='whitegrid'); import matplotlib.pyplot as plt; {state.font_setup_code}; plt.rcParams['axes.unicode_minus'] = False; plt.figure(figsize=(10,6)); sns.histplot(df['利率'], bins=30, kde=True); plt.title('利率分布圖'); plt.savefig('temp/plot.png'); print('Plot saved.')`\n   - Then summarize the distribution in the final answer.\n3. [OUTLIER CHECK] If asked about 'outliers' (離群值), USE `python_repl_ast` IMMEDIATELY with this logic:\n   - `df_out = df[df['利率'] < 2.6]`\n   - `n_green = df_out['新青安註記'].notna().sum()` (Standardize check: Count non-nulls)\n   - `n_emp = df_out['行員註記'].notna().sum()`\n   - `n_stake = df_out['利益關係人'].notna().sum()`\n   - `print(n_green, n_emp, n_stake)`\n   - **CRITICAL ANALYSIS**: '新青安' & '行員' are reasonable. BUT for **Stakeholder (利益關係人)**, citing **Bank Act 33**, flag as **Potential Compliance Risk**.\n4. [DATA EXPORT] If asked for 'Stakeholder details': \n   - Filter `df` where '利率' < 2.6 AND '利益關係人' IS NOT NULL (has value like 'V' or 'Y').\n   - Save to 'temp/export.xlsx'.\n   - Print first 5 rows with `print(df.head().to_markdown(index=False))`."
+                prefix=f"You are a detailed and professional AI Credit Analyst. The dataframe is ALREADY LOADED as `df`. DO NOT import pandas. DO NOT read files.\n\nCAPABILITIES:\n1. [METHOD EXPLANATION] If asked 'How to perform reasonableness analysis?', DO NOT plot. Provide structured text: **利率**, **成數**, **寬限期**, **手續費**, **擔保品**, **還款方式**.\n2. [ANALYSIS & PLOTTING] If asked to 'Analyze rate': \n   - Step 1: CALCULATE stats first: `print(df['利率'].describe())`\n   - Step 2: EXECUTE PLOT (MANDATORY): `import seaborn as sns; sns.set_theme(style='whitegrid'); import matplotlib.pyplot as plt; {state.font_setup_code}; plt.rcParams['axes.unicode_minus'] = False; plt.figure(figsize=(10,6)); sns.histplot(df['利率'], bins=30, kde=True); plt.title('利率分布圖'); plt.savefig('temp/plot.png'); print('Plot saved to temp/plot.png')` \n   - Step 3: SUMMARIZE based on Step 1 stats. \n   - **IMPORTANT**: You MUST Run Step 2 to create the file. DO NOT output the raw Python code. DO NOT mention the file path 'temp/plot.png' or say 'Plot saved'. Just present the analysis.\n3. [OUTLIER CHECK] If asked about 'outliers' (離群值), USE `python_repl_ast` IMMEDIATELY with this logic:\n   - `df_out = df[df['利率'] < 2.6]`\n   - `n_green = df_out['新青安註記'].notna().sum()` (Standardize check: Count non-nulls)\n   - `n_emp = df_out['行員註記'].notna().sum()`\n   - `n_stake = df_out['利益關係人'].notna().sum()`\n   - `print(n_green, n_emp, n_stake)`\n   - **CRITICAL ANALYSIS**: '新青安' & '行員' are reasonable. BUT for **Stakeholder (利益關係人)**, citing **Bank Act 33**, flag as **Potential Compliance Risk**.\n4. [DATA EXPORT] If asked for 'Stakeholder details': \n   - Filter `df` where '利率' < 2.6 AND '利益關係人' IS NOT NULL (has value like 'V' or 'Y').\n   - Save to 'temp/export.xlsx'.\n   - Print first 5 rows with `print(df.head().to_markdown(index=False))`."
             )
 
             # Also create RAG for semantic search (row by row)
@@ -273,8 +273,20 @@ async def chat(request: ChatRequest):
                     with open("temp/plot.png", "rb") as f:
                         img_base64 = base64.b64encode(f.read()).decode('utf-8')
                     response_data["image"] = img_base64
-                    agent_output += "\n\n(Chart generated)"
-                
+                    # Removed redundant text: agent_output += "\n\n(Chart generated)"
+                else:
+                    # Fallback: If intent was to plot (keywords check) but file not found -> Force Plot
+                    plot_keywords = ["plot", "chart", "graph", "distribution", "圖", "分布", "畫", "draw"]
+                    if any(k in request.message.lower() for k in plot_keywords) and state.dataframe is not None:
+                         print("DEBUG: Plot intent detected but no file from Agent. Attempting Force Plot...")
+                         if force_generate_plot(state.dataframe):
+                              with open("temp/plot.png", "rb") as f:
+                                  img_base64 = base64.b64encode(f.read()).decode('utf-8')
+                              response_data["image"] = img_base64
+                              # Removed redundant text: agent_output += "\n\n(Chart generated by System Fallback)"
+                         else:
+                              print("DEBUG: Force Plot failed.")
+
                 # Check for export
                 if os.path.exists("temp/export.xlsx"):
                      print("DEBUG: found temp/export.xlsx immediately after agent run")
@@ -354,6 +366,36 @@ Instructions:
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+def force_generate_plot(df):
+    """Fallback function to generate a plot if Agent fails."""
+    try:
+        print("FORCE PLOT: Generating fallback plot...")
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        
+        # Execute Setup Code for Fonts
+        exec(state.font_setup_code, globals())
+        
+        plt.rcParams['axes.unicode_minus'] = False
+        plt.figure(figsize=(10,6))
+        sns.set_theme(style='whitegrid')
+        
+        # Determine what to plot based on columns
+        if '利率' in df.columns:
+             # Re-apply font settings to be safe
+             exec(state.font_setup_code, globals())
+             sns.histplot(df['利率'], bins=30, kde=True)
+             plt.title('利率分布圖')
+             plt.savefig('temp/plot.png')
+             print("FORCE PLOT: Saved temp/plot.png")
+             return True
+        else:
+             print("FORCE PLOT: '利率' column not found.")
+             return False
+    except Exception as e:
+        print(f"FORCE PLOT ERROR: {e}")
+        return False
 
 @api_router.get("/download/{filename}")
 async def download_file(filename: str):

@@ -26,12 +26,13 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 function App() {
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: '您好！我是您的智能授信分析師。系統已載入 Demo 資料，請直接點選下方按鈕開始分析，或透過左側選單上傳您的資料。' }
+    { role: 'assistant', content: '您好！我是稽核 AI 助手。我可以協助您進行各項稽核分析工作。請問您今天想要進行什麼樣的查核呢？' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [configStatus, setConfigStatus] = useState(null);
   const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
 
   const toast = useRef(null);
   const messagesEndRef = useRef(null);
@@ -87,11 +88,24 @@ function App() {
     setInput('');
     setIsLoading(true);
 
+    // Show quick actions after first user message
+    // Moved to after response to prevent buttons appearing before AI reply
+
+
     try {
       const res = await axios.post(`${API_BASE}/chat`, { message: userMsg });
+
+      let aiResponse = res.data.response;
+
+      // If this was the first interaction (triggering quick actions), append guidance
+      if (!showQuickActions) {
+        aiResponse += "\n\n---\n💡 **您可以參考下方對話框按鈕，進行更深入的分析（如：授信條件合理性、利率分布圖等）。**";
+        setShowQuickActions(true);
+      }
+
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: res.data.response,
+        content: aiResponse,
         image: res.data.image,
         file: res.data.file
       }]);
@@ -107,7 +121,7 @@ function App() {
     <div className="flex align-items-center gap-2">
       <Button icon="pi pi-bars" text rounded onClick={() => setSidebarVisible(true)} className="text-gray-600 hover:text-black mr-2" />
       <i className="pi pi-chart-bar text-deloitte text-2xl"></i>
-      <span className="font-bold text-xl text-900">AI 智能授信分析師</span>
+      <span className="font-bold text-xl text-900">稽核 AI 助手</span>
     </div>
   );
 
@@ -177,7 +191,7 @@ function App() {
             </div>
 
             <div className="p-3 border-top-1 border-gray-200 text-center">
-              <small className="text-gray-400">AI 智能授信分析師 v1.0</small>
+              <small className="text-gray-400">稽核 AI 助手 v1.0</small>
             </div>
           </div>
         )}
@@ -209,7 +223,7 @@ function App() {
                       />
                       <div className="flex flex-column gap-1 max-w-full">
                         <span className={`text-xs text-gray-400 font-medium ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                          {msg.role === 'user' ? '您' : 'AI 分析師'} • {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {msg.role === 'user' ? '您' : '稽核 AI 助手'} • {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                         <div className={`p-3 md:p-4 border-round-2xl shadow-1 line-height-3 text-lg ${msg.role === 'user' ? 'bg-deloitte text-white border-top-right-radius-0' : 'bg-white text-gray-800 border-1 border-gray-100 border-top-left-radius-0'}`}>
                           {msg.role === 'user' ? (
@@ -291,55 +305,57 @@ function App() {
         <div className="p-4 backdrop-blur-md bg-white/70 border-top-1 border-white/20">
           <div className="max-w-5xl mx-auto relative flex flex-column gap-3">
 
-            {/* Quick Actions (Scenario Guide) */}
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-              <Button
-                label="🔍 授信條件合理性 (Q1)"
-                rounded
-                outlined
-                size="small"
-                className="white-space-nowrap bg-white/80 border-deloitte text-deloitte hover:bg-gray-100"
-                onClick={() => {
-                  const msg = "請說明授信條件合理性分析，可以怎麼執行 ?";
-                  setInput(msg);
-                  // Optional: auto-send
-                  // sendMessage(msg);
-                }}
-              />
-              <Button
-                label="📊 利率分布圖 (Q2)"
-                rounded
-                outlined
-                size="small"
-                className="white-space-nowrap bg-white/80 border-deloitte text-deloitte hover:bg-gray-100"
-                onClick={() => {
-                  const msg = "我想針對現有房貸明細進行利率合理性分析，請畫出利率分布圖";
-                  setInput(msg);
-                }}
-              />
-              <Button
-                label="⚠️ 離群值分析 (Q3)"
-                rounded
-                outlined
-                size="small"
-                className="white-space-nowrap bg-white/80 border-deloitte text-deloitte hover:bg-gray-100"
-                onClick={() => {
-                  const msg = "我看到有一些離群值，請針對離群值做分析";
-                  setInput(msg);
-                }}
-              />
-              <Button
-                label="⬇️ 匯出相關人明細 (Q4)"
-                rounded
-                outlined
-                size="small"
-                className="white-space-nowrap bg-white/80 border-deloitte text-deloitte hover:bg-gray-100"
-                onClick={() => {
-                  const msg = "那幫我輸出利益關係人的離群值明細給我";
-                  setInput(msg);
-                }}
-              />
-            </div>
+            {/* Quick Actions (Scenario Guide) - Only show after first message */}
+            {showQuickActions && (
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                <Button
+                  label="🔍 授信條件合理性 (Q1)"
+                  rounded
+                  outlined
+                  size="small"
+                  className="white-space-nowrap bg-white/80 border-deloitte text-deloitte hover:bg-gray-100"
+                  onClick={() => {
+                    const msg = "請說明授信條件合理性分析，可以怎麼執行 ?";
+                    setInput(msg);
+                    // Optional: auto-send
+                    // sendMessage(msg);
+                  }}
+                />
+                <Button
+                  label="📊 利率分布圖 (Q2)"
+                  rounded
+                  outlined
+                  size="small"
+                  className="white-space-nowrap bg-white/80 border-deloitte text-deloitte hover:bg-gray-100"
+                  onClick={() => {
+                    const msg = "我想針對現有房貸明細進行利率合理性分析，請畫出利率分布圖";
+                    setInput(msg);
+                  }}
+                />
+                <Button
+                  label="⚠️ 離群值分析 (Q3)"
+                  rounded
+                  outlined
+                  size="small"
+                  className="white-space-nowrap bg-white/80 border-deloitte text-deloitte hover:bg-gray-100"
+                  onClick={() => {
+                    const msg = "我看到有一些離群值，請針對離群值做分析";
+                    setInput(msg);
+                  }}
+                />
+                <Button
+                  label="⬇️ 匯出相關人明細 (Q4)"
+                  rounded
+                  outlined
+                  size="small"
+                  className="white-space-nowrap bg-white/80 border-deloitte text-deloitte hover:bg-gray-100"
+                  onClick={() => {
+                    const msg = "那幫我輸出利益關係人的離群值明細給我";
+                    setInput(msg);
+                  }}
+                />
+              </div>
+            )}
 
             <span className="p-input-icon-right w-full">
               <i className={`pi pi-send cursor-pointer hover:text-green-600 transition-colors ${!input.trim() ? 'opacity-50' : 'text-deloitte'}`}
