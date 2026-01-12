@@ -134,7 +134,7 @@ async def startup_event():
                 verbose=True, 
                 allow_dangerous_code=True,
                 agent_executor_kwargs={"handle_parsing_errors": True},
-                prefix=f"You are a detailed and professional AI Credit Analyst. The dataframe is ALREADY LOADED as `df`. DO NOT import pandas. DO NOT read files.\n\nCAPABILITIES:\n1. [METHOD EXPLANATION] If asked 'How to perform reasonableness analysis?', DO NOT plot. Provide structured text: **利率**, **成數**, **寬限期**, **手續費**, **擔保品**, **還款方式**.\n2. [ANALYSIS & PLOTTING] If asked to 'Analyze rate': \n   - Step 1: CALCULATE stats first: `print(df['利率'].describe())`\n   - Step 2: EXECUTE PLOT (MANDATORY): `import seaborn as sns; sns.set_theme(style='whitegrid'); import matplotlib.pyplot as plt; {state.font_setup_code}; plt.rcParams['axes.unicode_minus'] = False; plt.figure(figsize=(10,6)); sns.histplot(df['利率'], bins=30, kde=True); plt.title('利率分布圖'); plt.savefig('temp/plot.png'); print('Plot saved to temp/plot.png')` \n   - Step 3: SUMMARIZE based on Step 1 stats. \n   - **IMPORTANT**: You MUST Run Step 2 to create the file. DO NOT output the raw Python code. DO NOT mention the file path 'temp/plot.png' or say 'Plot saved'. Just present the analysis.\n3. [OUTLIER CHECK] If asked about 'outliers' (離群值), USE `python_repl_ast` IMMEDIATELY with this logic:\n   - `df_out = df[df['利率'] < 2.6]`\n   - `n_green = df_out['新青安註記'].notna().sum()` (Standardize check: Count non-nulls)\n   - `n_emp = df_out['行員註記'].notna().sum()`\n   - `n_stake = df_out['利益關係人'].notna().sum()`\n   - `print(n_green, n_emp, n_stake)`\n   - **CRITICAL ANALYSIS**: '新青安' & '行員' are reasonable. BUT for **Stakeholder (利益關係人)**, citing **Bank Act 33**, flag as **Potential Compliance Risk**.\n4. [DATA EXPORT] If asked for 'Stakeholder details': \n   - Filter `df` where '利率' < 2.6 AND '利益關係人' IS NOT NULL (has value like 'V' or 'Y').\n   - Save to 'temp/export.xlsx'.\n   - Print first 5 rows with `print(df.head().to_markdown(index=False))`."
+                prefix=f"You are a detailed and professional AI Credit Analyst. The dataframe is ALREADY LOADED as `df`. DO NOT import pandas. DO NOT read files.\n\nCAPABILITIES:\n1. [METHOD EXPLANATION] If asked 'How to perform reasonableness analysis?' or '說明授信條件合理性' or '怎麼執行': \n   - DO NOT plot. Provide structured text: **利率**, **成數**, **寬限期**, **手續費**, **擔保品**, **還款方式**.\n2. [ANALYSIS & PLOTTING] If asked to 'Analyze rate' OR 'Scatter plot' OR 'Distribution' OR '母體分析': \n   - Step 1: CALCULATE stats first: `print(df['利率'].describe())`\n   - Step 2: EXECUTE PLOT (MANDATORY): \n     - IF 'scatter' or '散布' or '關係' or '關聯' in query: `import seaborn as sns; sns.set_theme(style='whitegrid'); import matplotlib.pyplot as plt; {state.font_setup_code}; plt.rcParams['axes.unicode_minus'] = False; plt.figure(figsize=(10,6)); sns.scatterplot(data=df, x='餘額', y='利率', alpha=0.6); plt.title('利率 vs 餘額 散布圖'); plt.savefig('temp/plot.png'); print('Plot saved to temp/plot.png')`\n     - ELSE (default distribution): `import seaborn as sns; sns.set_theme(style='whitegrid'); import matplotlib.pyplot as plt; {state.font_setup_code}; plt.rcParams['axes.unicode_minus'] = False; plt.figure(figsize=(10,6)); sns.histplot(df['利率'], bins=30, kde=True); plt.title('利率分布圖'); plt.savefig('temp/plot.png'); print('Plot saved to temp/plot.png')` \n   - Step 3: SUMMARIZE based on Step 1 stats. \n   - **IMPORTANT**: You MUST Run Step 2 to create the file. DO NOT output the raw Python code. DO NOT mention the file path 'temp/plot.png' or say 'Plot saved'. Just present the analysis.\n3. [OUTLIER CHECK] If asked about 'outliers' (離群值) OR '檢視利率是否合理' OR '合規' OR '銀行法': \n   - USE `python_repl_ast` IMMEDIATELY with this logic:\n   - `df_low = df[df['利率'] < 2.6]`\n   - `df_high = df[df['利率'] > 3.2]`\n   - `n_green = df_low['新青安註記'].notna().sum()` (Standardize check: Count non-nulls)\n   - `n_emp = df_low['行員註記'].notna().sum()`\n   - `n_stake = df_low['利益關係人'].notna().sum()`\n   - `print('Low:<2.6=', len(df_low), ' High:>3.2=', len(df_high), ' Green=', n_green, ' Emp=', n_emp, ' Stake=', n_stake)`\n   - **CRITICAL ANALYSIS**: Report Total Outliers (Low + High). For Low Rate: '新青安' & '行員' are reasonable. BUT for **Stakeholder (利益關係人)**, citing **Bank Act 33**, flag as **Potential Compliance Risk**. Mention High Rate count as well.\n4. [DATA EXPORT] If asked for 'Stakeholder details' or '利益關係人明細': \n   - Filter `df` where '利率' < 2.6 AND '利益關係人' IS NOT NULL (has value like 'V' or 'Y').\n   - Save to 'temp/export.xlsx'.\n   - Print first 5 rows with `print(df.head().to_markdown(index=False))`."
             )
             print("Demo data loaded successfully!")
         except Exception as e:
@@ -188,7 +188,7 @@ async def upload_file(file: UploadFile = File(...)):
                 verbose=True, 
                 allow_dangerous_code=True,
                 agent_executor_kwargs={"handle_parsing_errors": True},
-                prefix=f"You are a detailed and professional AI Credit Analyst. The dataframe is ALREADY LOADED as `df`. DO NOT import pandas. DO NOT read files.\n\nCAPABILITIES:\n1. [METHOD EXPLANATION] If asked 'How to perform reasonableness analysis?', DO NOT plot. Provide structured text: **利率**, **成數**, **寬限期**, **手續費**, **擔保品**, **還款方式**.\n2. [ANALYSIS & PLOTTING] If asked to 'Analyze rate': \n   - Step 1: CALCULATE stats first: `print(df['利率'].describe())`\n   - Step 2: EXECUTE PLOT (MANDATORY): `import seaborn as sns; sns.set_theme(style='whitegrid'); import matplotlib.pyplot as plt; {state.font_setup_code}; plt.rcParams['axes.unicode_minus'] = False; plt.figure(figsize=(10,6)); sns.histplot(df['利率'], bins=30, kde=True); plt.title('利率分布圖'); plt.savefig('temp/plot.png'); print('Plot saved to temp/plot.png')` \n   - Step 3: SUMMARIZE based on Step 1 stats. \n   - **IMPORTANT**: You MUST Run Step 2 to create the file. DO NOT output the raw Python code. DO NOT mention the file path 'temp/plot.png' or say 'Plot saved'. Just present the analysis.\n3. [OUTLIER CHECK] If asked about 'outliers' (離群值), USE `python_repl_ast` IMMEDIATELY with this logic:\n   - `df_out = df[df['利率'] < 2.6]`\n   - `n_green = df_out['新青安註記'].notna().sum()` (Standardize check: Count non-nulls)\n   - `n_emp = df_out['行員註記'].notna().sum()`\n   - `n_stake = df_out['利益關係人'].notna().sum()`\n   - `print(n_green, n_emp, n_stake)`\n   - **CRITICAL ANALYSIS**: '新青安' & '行員' are reasonable. BUT for **Stakeholder (利益關係人)**, citing **Bank Act 33**, flag as **Potential Compliance Risk**.\n4. [DATA EXPORT] If asked for 'Stakeholder details': \n   - Filter `df` where '利率' < 2.6 AND '利益關係人' IS NOT NULL (has value like 'V' or 'Y').\n   - Save to 'temp/export.xlsx'.\n   - Print first 5 rows with `print(df.head().to_markdown(index=False))`."
+                prefix=f"You are a detailed and professional AI Credit Analyst. The dataframe is ALREADY LOADED as `df`. DO NOT import pandas. DO NOT read files.\n\nCAPABILITIES:\n1. [METHOD EXPLANATION] If asked 'How to perform reasonableness analysis?' or '說明授信條件合理性' or '怎麼執行': \n   - DO NOT plot. Provide structured text: **利率**, **成數**, **寬限期**, **手續費**, **擔保品**, **還款方式**.\n2. [ANALYSIS & PLOTTING] If asked to 'Analyze rate' OR 'Scatter plot' OR 'Distribution' OR '母體分析': \n   - Step 1: CALCULATE stats first: `print(df['利率'].describe())`\n   - Step 2: EXECUTE PLOT (MANDATORY): \n     - IF 'scatter' or '散布' or '關係' or '關聯' in query: `import seaborn as sns; sns.set_theme(style='whitegrid'); import matplotlib.pyplot as plt; {state.font_setup_code}; plt.rcParams['axes.unicode_minus'] = False; plt.figure(figsize=(10,6)); sns.scatterplot(data=df, x='餘額', y='利率', alpha=0.6); plt.title('利率 vs 餘額 散布圖'); plt.savefig('temp/plot.png'); print('Plot saved to temp/plot.png')`\n     - ELSE (default distribution): `import seaborn as sns; sns.set_theme(style='whitegrid'); import matplotlib.pyplot as plt; {state.font_setup_code}; plt.rcParams['axes.unicode_minus'] = False; plt.figure(figsize=(10,6)); sns.histplot(df['利率'], bins=30, kde=True); plt.title('利率分布圖'); plt.savefig('temp/plot.png'); print('Plot saved to temp/plot.png')` \n   - Step 3: SUMMARIZE based on Step 1 stats. \n   - **IMPORTANT**: You MUST Run Step 2 to create the file. DO NOT output the raw Python code. DO NOT mention the file path 'temp/plot.png' or say 'Plot saved'. Just present the analysis.\n3. [OUTLIER CHECK] If asked about 'outliers' (離群值) OR '檢視利率是否合理' OR '合規' OR '銀行法': \n   - USE `python_repl_ast` IMMEDIATELY with this logic:\n   - `df_low = df[df['利率'] < 2.6]`\n   - `df_high = df[df['利率'] > 3.2]`\n   - `n_green = df_low['新青安註記'].notna().sum()` (Standardize check: Count non-nulls)\n   - `n_emp = df_low['行員註記'].notna().sum()`\n   - `n_stake = df_low['利益關係人'].notna().sum()`\n   - `print('Low:<2.6=', len(df_low), ' High:>3.2=', len(df_high), ' Green=', n_green, ' Emp=', n_emp, ' Stake=', n_stake)`\n   - **CRITICAL ANALYSIS**: Report Total Outliers (Low + High). For Low Rate: '新青安' & '行員' are reasonable. BUT for **Stakeholder (利益關係人)**, citing **Bank Act 33**, flag as **Potential Compliance Risk**. Mention High Rate count as well.\n4. [DATA EXPORT] If asked for 'Stakeholder details' or '利益關係人明細': \n   - Filter `df` where '利率' < 2.6 AND '利益關係人' IS NOT NULL (has value like 'V' or 'Y').\n   - Save to 'temp/export.xlsx'.\n   - Print first 5 rows with `print(df.head().to_markdown(index=False))`."
             )
 
             # Also create RAG for semantic search (row by row)
@@ -276,10 +276,13 @@ async def chat(request: ChatRequest):
                     # Removed redundant text: agent_output += "\n\n(Chart generated)"
                 else:
                     # Fallback: If intent was to plot (keywords check) but file not found -> Force Plot
-                    plot_keywords = ["plot", "chart", "graph", "distribution", "圖", "分布", "畫", "draw"]
+                    plot_keywords = ["plot", "chart", "graph", "distribution", "圖", "分布", "畫", "draw", "scatter", "散布", "母體"]
+                    is_scatter = any(k in request.message.lower() for k in ["scatter", "散布", "關係", "關聯"])
+                    
                     if any(k in request.message.lower() for k in plot_keywords) and state.dataframe is not None:
-                         print("DEBUG: Plot intent detected but no file from Agent. Attempting Force Plot...")
-                         if force_generate_plot(state.dataframe):
+                         print(f"DEBUG: Plot intent detected (scatter={is_scatter}) but no file from Agent. Attempting Force Plot...")
+                         plot_type = 'scatter' if is_scatter else 'hist'
+                         if force_generate_plot(state.dataframe, plot_type):
                               with open("temp/plot.png", "rb") as f:
                                   img_base64 = base64.b64encode(f.read()).decode('utf-8')
                               response_data["image"] = img_base64
@@ -296,7 +299,7 @@ async def chat(request: ChatRequest):
                      if current_time - file_mtime < 30:
                          print("DEBUG: file is fresh, attaching download link")
                          response_data["file"] = "/api/download/export.xlsx"
-                         agent_output += "\n\n(File ready for download)"
+                         # agent_output += "\n\n(File ready for download)"
                      else:
                          print(f"DEBUG: file is stale (age={current_time - file_mtime}s)")
                 else:
@@ -367,28 +370,59 @@ Instructions:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-def force_generate_plot(df):
+def force_generate_plot(df, plot_type='hist'):
     """Fallback function to generate a plot if Agent fails."""
     try:
-        print("FORCE PLOT: Generating fallback plot...")
+        print(f"FORCE PLOT: Generating fallback plot type={plot_type}...")
         import matplotlib.pyplot as plt
         import seaborn as sns
         
-        # Execute Setup Code for Fonts
-        exec(state.font_setup_code, globals())
+        plt.close('all') # Clear any existing plots
+        
+        # Execute Setup Code for Fonts (Safe Mode)
+        try:
+            exec(state.font_setup_code, globals())
+        except:
+            plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei', 'SimHei', 'Arial']
         
         plt.rcParams['axes.unicode_minus'] = False
         plt.figure(figsize=(10,6))
         sns.set_theme(style='whitegrid')
         
+        if plot_type == 'scatter':
+            # Scatter Plot: Rate vs LTV or Amount
+            # Candidates for X-axis
+            x_candidates = ['成數', '核貸成數', '貸款成數', 'LTV', '核准金額', '授信金額', '貸款金額', '金額', '餘額']
+            x_col = next((col for col in x_candidates if col in df.columns), None)
+            
+            if '利率' in df.columns and x_col:
+                # Re-apply font settings to be safe
+                try:
+                    exec(state.font_setup_code, globals())
+                except:
+                    pass
+                
+                sns.scatterplot(data=df, x=x_col, y='利率', alpha=0.6)
+                plt.title(f'利率 vs {x_col} 散布圖')
+                plt.savefig('temp/plot.png')
+                print(f"FORCE PLOT: Saved temp/plot.png (Scatter: {x_col})")
+                return True
+            else:
+                print(f"FORCE PLOT: No suitable X column found for scatter. Candidates={x_candidates}. Falling back to hist.")
+                # Fall through to hist
+        
         # Determine what to plot based on columns
         if '利率' in df.columns:
              # Re-apply font settings to be safe
-             exec(state.font_setup_code, globals())
+             try:
+                 exec(state.font_setup_code, globals())
+             except:
+                 pass
+             
              sns.histplot(df['利率'], bins=30, kde=True)
              plt.title('利率分布圖')
              plt.savefig('temp/plot.png')
-             print("FORCE PLOT: Saved temp/plot.png")
+             print("FORCE PLOT: Saved temp/plot.png (Hist)")
              return True
         else:
              print("FORCE PLOT: '利率' column not found.")

@@ -317,30 +317,31 @@ function App() {
                   onClick={() => {
                     const msg = "請說明授信條件合理性分析，可以怎麼執行 ?";
                     setInput(msg);
-                    // Optional: auto-send
-                    // sendMessage(msg);
+                    sendMessage(msg);
                   }}
                 />
                 <Button
-                  label="📊 利率分布圖 (Q2)"
+                  label="📊 利率母體分析 (Q2)"
                   rounded
                   outlined
                   size="small"
                   className="white-space-nowrap bg-white/80 border-deloitte text-deloitte hover:bg-gray-100"
                   onClick={() => {
-                    const msg = "我想針對現有房貸明細進行利率合理性分析，請畫出利率分布圖";
+                    const msg = "我想針對現有房貸明細進行利率母體分析";
                     setInput(msg);
+                    sendMessage(msg);
                   }}
                 />
                 <Button
-                  label="⚠️ 離群值分析 (Q3)"
+                  label="⚖️ 合規性檢視 (Q3)"
                   rounded
                   outlined
                   size="small"
                   className="white-space-nowrap bg-white/80 border-deloitte text-deloitte hover:bg-gray-100"
                   onClick={() => {
-                    const msg = "我看到有一些離群值，請針對離群值做分析";
+                    const msg = "請根據銀行法、內規與政府政策的規定來幫我檢視利率是否合理";
                     setInput(msg);
+                    sendMessage(msg);
                   }}
                 />
                 <Button
@@ -350,8 +351,9 @@ function App() {
                   size="small"
                   className="white-space-nowrap bg-white/80 border-deloitte text-deloitte hover:bg-gray-100"
                   onClick={() => {
-                    const msg = "那幫我輸出利益關係人的離群值明細給我";
+                    const msg = "請幫我輸出離群值的利益關係人明細給我";
                     setInput(msg);
+                    sendMessage(msg);
                   }}
                 />
               </div>
